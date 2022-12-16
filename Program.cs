@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace CS.Parallel.Study
 {
@@ -9,20 +11,57 @@ namespace CS.Parallel.Study
     {
         static void Main(string[] args)
         {
-            //  .NET's Task Parallel Library provides Parallel class
-            //  for data parallelization requirements
+            //  PFX provides IProducerConsumerCollection<T> for producer-consumer purposes
+            //  This is implemented by 3 classes
+            //  ConcurrentBag
+            //  ConcurrentStack
+            //  ConcurrentQueue
 
-            //  For range based iteration
-            System.Threading.Tasks.Parallel.For(1, 10, n =>
+            //  These classes allow concurrent reads and writes
+
+            //  https://learn.microsoft.com/en-us/dotnet/api/system.collections.concurrent.iproducerconsumercollection-1?view=net-7.0
+
+            //  For the classic case of Producer-consumer, PFX offers BlockingCollection<T>,
+            //  which wraps around any class that implements IProducerConsumerCollection<T>.
+            //  When you call TryTake(), instead of returning false, this collection blocks
+            //  till the point the value is available.
+            IProducerConsumerCollection<int> backingStore = new ConcurrentQueue<int>();
+            
+
+            BlockingCollection<int> blockingCollection = new BlockingCollection<int>(backingStore);
+
+            var producer = Task.Run(() =>
             {
-                Console.WriteLine($"Running Parallel.For; Thread Id: {Thread.CurrentThread.ManagedThreadId}");
+                for (int i = 0; i < 10; i++)
+                {
+                    Thread.Sleep(1000);
+
+                    //  This is to demonstrate the delayed production
+                    //  is waited by the consumer
+                    if (i == 7)
+                    {
+                        Thread.Sleep(5000);
+                    }
+
+                    blockingCollection.TryAdd(i);
+                }
+
+                //  This way we conclude the producer side
+                blockingCollection.CompleteAdding();
             });
 
-            //  For collection based iteration
-            System.Threading.Tasks.Parallel.ForEach(new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, n =>
+            var consumer = Task.Run(() =>
             {
-                Console.WriteLine($"Thread Id: {Thread.CurrentThread.ManagedThreadId}, Number: {n}");
+                //  Through the GetConsumingEnumerable() this iterator blocks till
+                //  the next element is available
+                foreach (var i in blockingCollection.GetConsumingEnumerable())
+                {
+                    Console.WriteLine($"Consumed: {i}");
+                }
             });
+            
+            producer.Wait();
+            consumer.Wait();
         }
     }
 }
