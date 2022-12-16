@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace CS.Parallel.Study
 {
@@ -8,25 +9,20 @@ namespace CS.Parallel.Study
     {
         static void Main(string[] args)
         {
-            //  PLINQ is effectual after IEnumerable.AsParallel()
-            //  The extension methods for PLINQ come from ParallelEnumerable static class
-            //  https://learn.microsoft.com/en-us/dotnet/api/system.linq.parallelenumerable.any?view=net-7.0
+            //  .NET's Task Parallel Library provides Parallel class
+            //  for data parallelization requirements
 
-            Queue<int> queue = new Queue<int>();
-            queue.Enqueue(1);
-            queue.Enqueue(2);
-            queue.Enqueue(3);
-            queue.Enqueue(4);
-            queue.Enqueue(5);
-            queue.Enqueue(6);
-            queue.Enqueue(7);
-            queue.Enqueue(8);
-            queue.Enqueue(9);
-            queue.Enqueue(10);
+            //  For range based iteration
+            System.Threading.Tasks.Parallel.For(1, 10, n =>
+            {
+                Console.WriteLine($"Running Parallel.For; Thread Id: {Thread.CurrentThread.ManagedThreadId}");
+            });
 
-            //  PLINQ applies partition/collation strategy
-            //  Threading is handled internally by PLINQ
-            List<int> newList = queue.AsParallel().Select(n => n * 1).ToList();
+            //  For collection based iteration
+            System.Threading.Tasks.Parallel.ForEach(new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, n =>
+            {
+                Console.WriteLine($"Thread Id: {Thread.CurrentThread.ManagedThreadId}, Number: {n}");
+            });
         }
     }
 }
